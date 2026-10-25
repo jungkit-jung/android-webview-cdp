@@ -39,8 +39,9 @@ jobs:
         env:
           KSPASS: agybrowser123
         run: |
-          chmod +x build.sh
-          ./build.sh
+          echo "PATH=$PATH"
+          which aapt2 d8 apksigner javac
+          bash ./build.sh
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -50,7 +51,7 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'workflow_dispatch'
         with:
           tag_name: v0.1.0-build${{ github.run_number }}
           name: AGY Agentic Browser v0.1.0 (Build ${{ github.run_number }})

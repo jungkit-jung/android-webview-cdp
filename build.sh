@@ -1,4 +1,4 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 # Hand-rolled Android build for Termux/aarch64.
 # No Gradle, no Android SDK install: aapt2 -> javac -> d8 -> alignment check -> apksigner.
 # No aidl, no external jars, and assets/ is linked in (-A).
@@ -10,9 +10,9 @@ ANDROID_JAR="${ANDROID_JAR:-$ROOT/sdk/platforms/android-36/android.jar}"
 if [ ! -f "$ANDROID_JAR" ]; then
   echo "==> Fetching platform android.jar..."
   mkdir -p "$(dirname "$ANDROID_JAR")"
-  curl -sSLO https://dl.google.com/android/repository/platform-34_r03.zip
-  unzip -q -j platform-34_r03.zip "*/android.jar" -d "$(dirname "$ANDROID_JAR")"
-  rm -f platform-34_r03.zip
+  curl -sSLO https://dl.google.com/android/repository/platform-36_r02.zip
+  unzip -q -j platform-36_r02.zip "android-36/android.jar" -d "$(dirname "$ANDROID_JAR")"
+  rm -f platform-36_r02.zip
 fi
 
 BUILD="$ROOT/build"
