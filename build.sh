@@ -108,6 +108,7 @@ apksigner sign \
   --ks "$KS" --ks-pass "pass:$KSPASS" --key-pass "pass:$KSPASS" \
   --v1-signing-enabled true --v2-signing-enabled true \
   --out "$OUT/so7o-webview.apk" "$OUT/so7o-webview-unsigned.apk"
+cp "$OUT/so7o-webview.apk" "$OUT/agy-terminal.apk"
 
 apksigner verify --print-certs "$OUT/so7o-webview.apk" | head -4
 echo

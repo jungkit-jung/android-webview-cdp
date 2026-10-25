@@ -1,4 +1,4 @@
-package app.so7o.webview;
+package app.so7o.terminal;
 
 import android.app.Activity;
 import android.content.Intent;

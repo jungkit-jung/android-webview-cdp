@@ -46,18 +46,22 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agy-agentic-browser-apk
-          path: out/so7o-webview.apk
+          name: agy-terminal-apk
+          path: out/*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v0.2.0-build${{ github.run_number }}
-          name: AGY Orderflow Terminal v0.2.0 (Build ${{ github.run_number }})
+          tag_name: v0.2.0-terminal-b${{ github.run_number }}
+          name: AGY Terminal v0.2.0 (Dedicated App - Build ${{ github.run_number }})
           body: |
-            ### 🚀 AGY Orderflow & Liquidity Terminal for Android
-            Built automatically via GitHub Actions!
+            ### 🚀 AGY Terminal (Dedicated Separate App)
+            Aplikasi terpisah berdampingan dengan AGY Browser (tidak bentrok / tidak menimpa browser).
+            
+            **Package:** `app.so7o.terminal`
+            **Label:** `AGY Terminal`
+            **CDP Relay Port:** `127.0.0.1:9335` (AGY Browser tetap di `9334`)
 
             **Fitur Unggulan:**
             - **1:1 Orderbook Liquidity Heatmap (Bookmap-Style):** Rendering termal kedalaman limit order real-time di belakang candle.
@@ -66,6 +70,8 @@ jobs:
             - **DOM Tape Ladder:** Level 2 live ladder dengan imbalance meter dan real-time tick execution tape.
             - **Dual Mode:** Bisa jalan online mandiri via Binance Public WebSocket tanpa Termux, atau terhubung ke Sovereign Engine lokal (Port 8000).
             - **Auto-Unlock Engine:** Otomatis membuka fitur Pro/Ultimate saat membuka TapeDelta Web.
-          files: out/so7o-webview.apk
+          files: |
+            out/agy-terminal.apk
+            out/so7o-webview.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

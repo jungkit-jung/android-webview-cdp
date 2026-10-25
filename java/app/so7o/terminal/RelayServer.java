@@ -1,4 +1,4 @@
-package app.so7o.webview;
+package app.so7o.terminal;
 
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
@@ -27,7 +27,7 @@ import java.net.Socket;
 public class RelayServer {
 
     private static final String TAG = "So7oWebViewRelay";
-    public static final int PORT = 9334;
+    public static final int PORT = 9335;
 
     /** The relay belongs to the process, not the Activity — onCreate can run
      *  again (display change, rotation, task move) and a second bind would just
