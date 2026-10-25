@@ -6,14 +6,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-ANDROID_JAR="$ROOT/sdk/platforms/android-36/android.jar"
-[ -f "$ANDROID_JAR" ] || {
-  echo "missing $ANDROID_JAR (27 MB, deliberately not in the repo)." >&2
-  echo "Get it with:  ./setup.sh    — or by hand:" >&2
-  echo "  curl -LO https://dl.google.com/android/repository/platform-36_r02.zip" >&2
-  echo "  unzip -j platform-36_r02.zip android-36/android.jar -d sdk/platforms/android-36/" >&2
-  exit 1
-}
+ANDROID_JAR="${ANDROID_JAR:-$ROOT/sdk/platforms/android-36/android.jar}"
+if [ ! -f "$ANDROID_JAR" ]; then
+  echo "==> Fetching platform android.jar..."
+  mkdir -p "$(dirname "$ANDROID_JAR")"
+  curl -sSLO https://dl.google.com/android/repository/platform-34_r03.zip
+  unzip -q -j platform-34_r03.zip "*/android.jar" -d "$(dirname "$ANDROID_JAR")"
+  rm -f platform-34_r03.zip
+fi
 
 BUILD="$ROOT/build"
 OUT="$ROOT/out"

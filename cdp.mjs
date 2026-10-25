@@ -65,6 +65,7 @@ for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === '--repl') opt.repl = true;
   else if (a === '--list') opt.list = true;
+  else if (a === '--snapshot' || a === '--dom') opt.snapshot = true;
   else if (a === '--list-devices') opt.listDevices = true;
   else if (a === '--reset-device') opt.resetDevice = true;
   else if (a === '--no-clamp') opt.noClamp = true;
@@ -312,6 +313,26 @@ async function applyDevice(c, d) {
   console.log(`device: ${opt.device || opt.metrics} -> ${got}  (surface ${surf.w}x${surf.h})`);
 }
 
+async function snapshot(c) {
+  const data = await evaluate(c, `(() => {
+    const title = document.title;
+    const url = window.location.href;
+    const bodyText = document.body ? document.body.innerText.replace(/\\s+/g, ' ').trim().slice(0, 4000) : '';
+    const forms = [...document.querySelectorAll('input, button, select, textarea')].map((el, idx) => ({
+      index: idx,
+      tag: el.tagName.toLowerCase(),
+      type: el.type || '',
+      id: el.id || '',
+      name: el.name || '',
+      placeholder: el.placeholder || '',
+      text: (el.innerText || el.value || '').trim().slice(0, 50),
+      selector: el.id ? '#' + el.id : (el.name ? el.tagName.toLowerCase() + '[name="' + el.name + '"]' : null)
+    }));
+    return { title, url, text_preview: bodyText, interactive_elements: forms };
+  })()`);
+  console.log(JSON.stringify(data, null, 2));
+}
+
 async function shot(c, file) {
   const { data } = await c.send('Page.captureScreenshot', { format: 'png' });
   writeFileSync(file, Buffer.from(data, 'base64'));
@@ -346,6 +367,7 @@ async function runOnce() {
   if (opt.click) await click(c, opt.click);
   if (opt.type) { await c.send('Input.insertText', { text: opt.type }); console.log(`typed ${JSON.stringify(opt.type)}`); }
   if (opt.key) await pressKey(c, opt.key);
+  if (opt.snapshot) await snapshot(c);
   if (expression) {
     const value = await evaluate(c, expression);
     console.log(typeof value === 'string' ? value : JSON.stringify(value, null, 2));

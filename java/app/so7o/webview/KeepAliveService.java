@@ -5,19 +5,17 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.os.Build;
 import android.os.IBinder;
 
 /**
  * Keeps the process out of the frozen cgroup while the app is backgrounded.
  *
- * Without this, Samsung's freezer (and the platform's own cached-app freezer)
- * puts the process in /frozen once the app has been in the background for a
- * while. The DevTools socket stays *listed* in /proc/net/unix but is never
- * accepted, so CDP clients hang instead of failing cleanly.
+ * Without this, vendor power managers and Android's cached-app freezer
+ * put the process in /frozen once the app is in the background.
+ * The DevTools socket stays listed in /proc/net/unix but is never accepted.
  *
- * A foreground service makes the process freeze-exempt — which is what this
- * app needs, since the whole point is to drive it from Termux, i.e. while it
- * is not the visible app.
+ * A foreground service makes the process freeze-exempt.
  */
 public class KeepAliveService extends Service {
 
@@ -31,22 +29,42 @@ public class KeepAliveService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        NotificationChannel channel = new NotificationChannel(
-                CHANNEL, "WebView keep-alive", NotificationManager.IMPORTANCE_LOW);
-        channel.setShowBadge(false);
-        channel.setDescription("Keeps the DevTools socket reachable");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL, "WebView keep-alive", NotificationManager.IMPORTANCE_LOW);
+            channel.setShowBadge(false);
+            channel.setDescription("Keeps the DevTools socket reachable");
 
-        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        nm.createNotificationChannel(channel);
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) {
+                nm.createNotificationChannel(channel);
+            }
+        }
 
-        Notification n = new Notification.Builder(this, CHANNEL)
-                .setContentTitle("So7o Webview Shell")
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder = new Notification.Builder(this, CHANNEL);
+        } else {
+            builder = new Notification.Builder(this);
+        }
+
+        Notification n = builder
+                .setContentTitle("AGY Browser Shell")
                 .setContentText("CDP reachable · pid " + android.os.Process.myPid())
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setOngoing(true)
                 .build();
 
-        startForeground(NOTIFICATION_ID, n);
+        if (Build.VERSION.SDK_INT >= 34) {
+            try {
+                startForeground(NOTIFICATION_ID, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } catch (Throwable t) {
+                startForeground(NOTIFICATION_ID, n);
+            }
+        } else {
+            startForeground(NOTIFICATION_ID, n);
+        }
+
         return START_STICKY;
     }
 }
