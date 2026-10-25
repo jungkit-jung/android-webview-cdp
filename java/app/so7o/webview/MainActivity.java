@@ -199,6 +199,16 @@ public class MainActivity extends Activity {
                 if (urlBar != null && !urlBar.hasFocus()) {
                     urlBar.setText(url);
                 }
+                if (url != null && url.contains("tapedelta.com")) {
+                    String unlockJs = "(() => {"
+                            + "try {"
+                            + "  if (window.__mrdChart && window.__mrdChart.engine) {"
+                            + "    if (typeof window.__mrdChart.engine.enable_vpin === 'function') window.__mrdChart.engine.enable_vpin();"
+                            + "  }"
+                            + "} catch(e) {}"
+                            + "})();";
+                    view.evaluateJavascript(unlockJs, null);
+                }
             }
         });
 

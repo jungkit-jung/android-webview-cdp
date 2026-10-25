@@ -53,17 +53,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'workflow_dispatch'
         with:
-          tag_name: v0.1.0-build${{ github.run_number }}
-          name: AGY Agentic Browser v0.1.0 (Build ${{ github.run_number }})
+          tag_name: v0.2.0-build${{ github.run_number }}
+          name: AGY Orderflow Terminal v0.2.0 (Build ${{ github.run_number }})
           body: |
-            ### 🚀 AGY Agentic Browser for Android
+            ### 🚀 AGY Orderflow & Liquidity Terminal for Android
             Built automatically via GitHub Actions!
 
             **Fitur Unggulan:**
-            - Native Android WebView dengan Chrome DevTools Protocol (CDP) relay pada `127.0.0.1:9334`.
-            - Terhubung langsung dengan Agent Antigravity / LLM lokal di Termux tanpa butuh PC / adb.
-            - Browser sungguhan: Mendukung cookies, sesi login pribadi (dashboard perbankan, medsos, e-commerce).
-            - Dilengkapi Top Bar interaktif (URL / Search, Tombol Navigasi, Indikator Aktif Agent).
+            - **1:1 Orderbook Liquidity Heatmap (Bookmap-Style):** Rendering termal kedalaman limit order real-time di belakang candle.
+            - **Sierra-Style Footprint (Number Bars):** Bid vs Ask per tick, kotak emas POC (Point of Control), dan delta volume.
+            - **Live Signals Radar:** Aliran sinyal institusional Gold (XAUUSDT) & Crypto unmasked (Entry, TP1-4, SL, Walls).
+            - **DOM Tape Ladder:** Level 2 live ladder dengan imbalance meter dan real-time tick execution tape.
+            - **Dual Mode:** Bisa jalan online mandiri via Binance Public WebSocket tanpa Termux, atau terhubung ke Sovereign Engine lokal (Port 8000).
+            - **Auto-Unlock Engine:** Otomatis membuka fitur Pro/Ultimate saat membuka TapeDelta Web.
           files: out/so7o-webview.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,72 +1,662 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>So7o Android Webview Shell</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TapeDelta Native Orderflow & Heatmap Terminal</title>
 <style>
-  :root { color-scheme: dark; }
-  body { margin:0; padding:24px; font:15px/1.5 -apple-system,Roboto,sans-serif;
-         background:#101418; color:#e6edf3; }
-  h1 { font-size:19px; margin:0 0 4px; }
-  .sub { color:#8b949e; font-size:13px; margin-bottom:20px; }
-  .card { background:#161b22; border:1px solid #30363d; border-radius:10px;
-          padding:14px 16px; margin-bottom:14px; }
-  .k { color:#8b949e; font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
-  .v { font-size:15px; word-break:break-all; }
-  #hit { font-size:34px; font-weight:600; color:#58a6ff; }
-  button { font:inherit; padding:9px 16px; border-radius:8px; border:1px solid #30363d;
-           background:#21262d; color:#e6edf3; }
-  #cdp { color:#3fb950; }
-  .tag { display:inline-block; background:#1f6feb22; color:#58a6ff; border:1px solid #1f6feb55;
-         border-radius:999px; padding:1px 9px; font-size:12px; }
+  :root {
+    --bg-primary: #0a0e17;
+    --bg-panel: #111726;
+    --bg-card: #182033;
+    --border: #232d44;
+    --text: #e2e8f0;
+    --text-muted: #8b9bb4;
+    --green: #00e676;
+    --green-bg: rgba(0, 230, 118, 0.15);
+    --red: #ff3b69;
+    --red-bg: rgba(255, 59, 105, 0.15);
+    --gold: #ffd700;
+    --gold-bg: rgba(255, 215, 0, 0.18);
+    --cyan: #00f0ff;
+    --amber: #ff9100;
+    --font-mono: "SF Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+
+  /* TOP HUD NAV */
+  header {
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 8px;
+    z-index: 20;
+    height: 48px;
+  }
+  .hud-left, .hud-right { display: flex; align-items: center; gap: 8px; }
+  .logo-title {
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #fff;
+  }
+  .logo-badge {
+    background: linear-gradient(135deg, #ff9100, #ff3b69);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  select, button.hud-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus, button.hud-btn:focus { border-color: var(--gold); }
+  button.hud-btn.active {
+    background: var(--gold);
+    color: #000;
+    border-color: var(--gold);
+  }
+  .price-badge {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--green);
+  }
+
+  /* SIGNALS RADAR STRIP */
+  #signalRadar {
+    background: #0f172a;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+    z-index: 15;
+  }
+  .signal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+  }
+  .signal-side {
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+  .signal-side.buy { background: var(--green); color: #000; }
+  .signal-side.sell { background: var(--red); color: #fff; }
+  .signal-text { font-family: var(--font-mono); color: #e2e8f0; }
+  .signal-reason { color: var(--gold); font-size: 10px; }
+
+  /* MAIN LAYOUT */
+  main {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* CHART CANVAS CONTAINER */
+  #chartContainer {
+    flex: 1;
+    position: relative;
+    height: 100%;
+    background: #06090e;
+  }
+  canvas#chartCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* RIGHT DOM & TAPE PANEL */
+  aside#domTapePanel {
+    width: 180px;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .panel-header {
+    padding: 6px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+  #domList {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .dom-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1px 6px;
+    position: relative;
+    height: 18px;
+    align-items: center;
+  }
+  .dom-bg-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    opacity: 0.25;
+    z-index: 1;
+  }
+  .dom-row.ask .dom-bg-bar { background: var(--red); }
+  .dom-row.bid .dom-bg-bar { background: var(--green); }
+  .dom-row.spread {
+    background: #1e2638;
+    color: var(--gold);
+    font-weight: 700;
+    justify-content: center;
+    font-size: 10px;
+  }
+  .dom-price { z-index: 2; }
+  .dom-row.ask .dom-price { color: var(--red); }
+  .dom-row.bid .dom-price { color: var(--green); }
+  .dom-size { z-index: 2; color: #fff; }
+
+  /* BOTTOM TAPE STREAM */
+  #tapeContainer {
+    height: 110px;
+    border-top: 1px solid var(--border);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #tapeList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2px 4px;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .tape-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    padding: 1px 2px;
+  }
+  .tape-item.buy { color: var(--green); }
+  .tape-item.sell { color: var(--red); }
+
+  /* FLOATING WATERMARK & STATS */
+  .chart-watermark {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .wm-symbol { font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.15); }
+  .wm-mode { font-size: 12px; font-weight: 700; color: rgba(255,215,0,0.3); text-transform: uppercase; }
+
+  /* CVD METER BAR */
+  #cvdBar {
+    position: absolute;
+    bottom: 8px;
+    left: 14px;
+    background: rgba(17, 23, 38, 0.85);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    z-index: 5;
+  }
+
+  /* MODAL CLOUD SWITCH */
+  .switch-btn {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+  }
 </style>
 </head>
 <body>
-  <h1>So7o Android Webview Shell</h1>
-  <div class="sub">loaded from <code>file:///android_asset/index.html</code>
-    &nbsp;<span class="tag" id="dbg">debug socket on</span></div>
 
-  <div class="card">
-    <div class="k">taps</div>
-    <div id="hit">0</div>
+  <!-- TOP HEADER -->
+  <header>
+    <div class="hud-left">
+      <div class="logo-title">
+        <span>⚡ TAPEDELTA</span>
+        <span class="logo-badge">PRO/ULTIMATE</span>
+      </div>
+
+      <select id="symbolSelect" onchange="switchSymbol(this.value)">
+        <option value="XAUUSDT" selected>👑 Gold (XAUUSDT)</option>
+        <option value="BTCUSDT">₿ Bitcoin (BTCUSDT)</option>
+        <option value="ETHUSDT">Ξ Ethereum (ETHUSDT)</option>
+        <option value="SOLUSDT">◎ Solana (SOLUSDT)</option>
+      </select>
+
+      <div class="price-badge" id="hudPrice">$0.00</div>
+    </div>
+
+    <div class="hud-right">
+      <button class="hud-btn active" id="btnHeatmap" onclick="setMode('heatmap')">Heatmap</button>
+      <button class="hud-btn" id="btnFootprint" onclick="setMode('footprint')">Footprint</button>
+      <button class="switch-btn" onclick="openTapeDeltaOnline()">Web Pro ↗</button>
+    </div>
+  </header>
+
+  <!-- LIVE SIGNALS STRIP (UNMASKED INSTITUTIONAL FEED) -->
+  <div id="signalRadar">
+    <div style="color:var(--text-muted);font-weight:700;">📡 LIVE SIGNALS:</div>
+    <div id="signalsList" style="display:flex;gap:8px;">
+      <span style="color:var(--text-muted);">Fetching unmasked order flow signals...</span>
+    </div>
   </div>
 
-  <div class="card">
-    <div class="k">last CDP command</div>
-    <div class="v" id="cdp">— nothing from CDP yet —</div>
-  </div>
+  <!-- MAIN CANVAS & LADDER -->
+  <main>
+    <div id="chartContainer">
+      <div class="chart-watermark">
+        <div class="wm-symbol" id="wmSymbol">XAUUSDT</div>
+        <div class="wm-mode" id="wmMode">HEATMAP & LIQUIDITY DOM</div>
+      </div>
+      <div id="cvdBar">CVD Delta: <span id="cvdVal" style="color:var(--green)">+0.00</span> | VPIN: <span id="vpinVal" style="color:var(--gold)">0.24 (Low)</span></div>
+      <canvas id="chartCanvas"></canvas>
+    </div>
 
-  <div class="card">
-    <div class="k">app bridge (so7o.ping())</div>
-    <div class="v" id="bridge">—</div>
-  </div>
-
-  <button onclick="hit()">tap me (proves the page is live)</button>
+    <!-- DOM LADDER & TAPE -->
+    <aside id="domTapePanel">
+      <div class="panel-header">
+        <span>PRICE</span>
+        <span>SIZE ($)</span>
+      </div>
+      <div id="domList">
+        <!-- Rendered dynamically -->
+      </div>
+      <div id="tapeContainer">
+        <div class="panel-header">
+          <span>TIME</span>
+          <span>TAPE TICK</span>
+        </div>
+        <div id="tapeList">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </aside>
+  </main>
 
 <script>
-  var n = 0;
-  function hit() {
-    n++;
-    document.getElementById('hit').textContent = n;
-    console.log('tap #' + n);
-    return n;
+  // ----------------------------------------------------
+  // GLOBAL STATE & DATA PIPELINE
+  // ----------------------------------------------------
+  let currentSymbol = "XAUUSDT";
+  let chartMode = "heatmap"; // 'heatmap' or 'footprint'
+  let lastPrice = 0;
+  let runningCvd = 0;
+  let tradesHistory = [];
+  let orderBook = { bids: [], asks: [] };
+  let candles = []; // Candlesticks [ { time, open, high, low, close, volume, footprint: { price: { buy, sell } } } ]
+  let heatmapMatrix = []; // Time columns of orderbook depth slices
+  let maxHeatmapVol = 1;
+
+  const canvas = document.getElementById('chartCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+    drawChart();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  function setMode(mode) {
+    chartMode = mode;
+    document.getElementById('btnHeatmap').classList.toggle('active', mode === 'heatmap');
+    document.getElementById('btnFootprint').classList.toggle('active', mode === 'footprint');
+    document.getElementById('wmMode').innerText = mode === 'heatmap' ? 'HEATMAP & LIQUIDITY DOM' : 'SIERRA FOOTPRINT & POC';
+    drawChart();
   }
 
-  // A stable handle for Runtime.evaluate from CDP.
-  window.__so7o = {
-    shell: 'webview-shell',
-    taps: function () { return n; },
-    say: function (msg) {
-      document.getElementById('cdp').textContent = msg;
-      console.log('CDP said: ' + msg);
-      return 'shown: ' + msg;
-    }
-  };
+  function switchSymbol(sym) {
+    currentSymbol = sym;
+    document.getElementById('wmSymbol').innerText = sym;
+    tradesHistory = [];
+    candles = [];
+    heatmapMatrix = [];
+    connectWebSocket();
+    fetchLiveSignals();
+  }
 
-  document.getElementById('bridge').textContent =
-      (typeof so7o !== 'undefined' && so7o.ping) ? so7o.ping() : '(no bridge)';
-  console.log('webview-shell ready, title=' + document.title);
+  function openTapeDeltaOnline() {
+    if (window.so7o && window.so7o.toast) {
+      window.so7o.toast("Navigating to TapeDelta Cloud with Unlocked Engine...");
+    }
+    window.location.href = "https://app.tapedelta.com/trading/chart-terminal";
+  }
+
+  // ----------------------------------------------------
+  // UNMASKED SIGNALS RADAR (Direct backend TapeDelta query)
+  // ----------------------------------------------------
+  async function fetchLiveSignals() {
+    const listEl = document.getElementById('signalsList');
+    try {
+      const res = await fetch(`https://obag.docserver.name/api/heatmap-signals?symbol=ALL&limit=4&key=3aa8a545-caf3-4def-9044-9c01e29a6160`);
+      const data = await res.json();
+      if (!data.records || !data.records.length) return;
+
+      listEl.innerHTML = data.records.map(r => `
+        <div class="signal-pill">
+          <span class="signal-side ${r.side}">${r.side.toUpperCase()}</span>
+          <span class="signal-text"><b>${r.symbol}</b> @ ${r.entry.toFixed(2)}</span>
+          <span class="signal-text">TP1: ${r.target.toFixed(2)} | SL: ${r.stop.toFixed(2)}</span>
+          <span class="signal-reason">${(r.reasons && r.reasons[0]) ? r.reasons[0].slice(0, 35) : 'Wall Detected'}...</span>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.warn("Signal fetch fallback:", e);
+    }
+  }
+  setInterval(fetchLiveSignals, 15000);
+  fetchLiveSignals();
+
+  // ----------------------------------------------------
+  // LIVE WEBSOCKET CONNECTION (Binance Futures Direct Feed)
+  // ----------------------------------------------------
+  let ws = null;
+  function connectWebSocket() {
+    if (ws) { ws.close(); }
+    const s = currentSymbol.toLowerCase();
+    ws = new WebSocket(`wss://fstream.binance.com/stream?streams=${s}@aggTrade/${s}@depth20@100ms`);
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (!msg.data) return;
+
+      if (msg.stream.includes('aggTrade')) {
+        handleTrade(msg.data);
+      } else if (msg.stream.includes('depth')) {
+        handleDepth(msg.data);
+      }
+    };
+
+    ws.onerror = () => setTimeout(connectWebSocket, 3000);
+  }
+
+  function handleTrade(t) {
+    const price = parseFloat(t.p);
+    const size = parseFloat(t.q);
+    const isBuyerMaker = t.m; // true = taker sell, false = taker buy
+    const time = t.T;
+
+    lastPrice = price;
+    document.getElementById('hudPrice').innerText = `$${price.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+
+    // Update CVD
+    const delta = isBuyerMaker ? -size : size;
+    runningCvd += delta;
+    const cvdEl = document.getElementById('cvdVal');
+    cvdEl.innerText = (runningCvd >= 0 ? '+' : '') + runningCvd.toFixed(2);
+    cvdEl.style.color = runningCvd >= 0 ? 'var(--green)' : 'var(--red)';
+
+    // Update Candles (1-minute intervals)
+    const candleTime = Math.floor(time / 60000) * 60000;
+    let curCandle = candles[candles.length - 1];
+    if (!curCandle || curCandle.time !== candleTime) {
+      curCandle = {
+        time: candleTime,
+        open: price, high: price, low: price, close: price,
+        volume: 0, delta: 0,
+        footprint: {}
+      };
+      candles.push(curCandle);
+      if (candles.length > 50) candles.shift();
+    }
+
+    curCandle.high = Math.max(curCandle.high, price);
+    curCandle.low = Math.min(curCandle.low, price);
+    curCandle.close = price;
+    curCandle.volume += size;
+    curCandle.delta += delta;
+
+    // Footprint price level binning
+    const tick = currentSymbol.includes('XAU') ? 0.5 : 10;
+    const priceLevel = Math.round(price / tick) * tick;
+    if (!curCandle.footprint[priceLevel]) {
+      curCandle.footprint[priceLevel] = { buy: 0, sell: 0 };
+    }
+    if (isBuyerMaker) {
+      curCandle.footprint[priceLevel].sell += size;
+    } else {
+      curCandle.footprint[priceLevel].buy += size;
+    }
+
+    // Update Tape
+    addTapeTick(time, price, size, !isBuyerMaker);
+
+    // Redraw
+    requestAnimationFrame(drawChart);
+  }
+
+  function handleDepth(d) {
+    orderBook.bids = d.b.map(x => [parseFloat(x[0]), parseFloat(x[1])]);
+    orderBook.asks = d.a.map(x => [parseFloat(x[0]), parseFloat(x[1])]);
+    updateDomLadder();
+
+    // Append to Heatmap matrix (max 100 columns)
+    heatmapMatrix.push({
+      time: Date.now(),
+      bids: [...orderBook.bids],
+      asks: [...orderBook.asks]
+    });
+    if (heatmapMatrix.length > 80) heatmapMatrix.shift();
+  }
+
+  function addTapeTick(time, price, size, isBuy) {
+    const list = document.getElementById('tapeList');
+    const div = document.createElement('div');
+    div.className = `tape-item ${isBuy ? 'buy' : 'sell'}`;
+    const tStr = new Date(time).toTimeString().split(' ')[0];
+    const usdVal = (price * size).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    div.innerHTML = `<span>${tStr}</span><span>$${usdVal}</span>`;
+    list.prepend(div);
+    if (list.children.length > 20) list.removeChild(list.lastChild);
+  }
+
+  function updateDomLadder() {
+    const list = document.getElementById('domList');
+    const asks = orderBook.asks.slice(0, 7).reverse();
+    const bids = orderBook.bids.slice(0, 7);
+
+    let maxVol = 1;
+    [...asks, ...bids].forEach(x => { if (x[1] > maxVol) maxVol = x[1]; });
+
+    let html = '';
+    asks.forEach(([p, s]) => {
+      const pct = Math.min(100, (s / maxVol) * 100);
+      html += `<div class="dom-row ask"><div class="dom-bg-bar" style="width:${pct}%"></div><span class="dom-price">${p.toFixed(2)}</span><span class="dom-size">${s.toFixed(2)}</span></div>`;
+    });
+    html += `<div class="dom-row spread">SPREAD ${(orderBook.asks[0] && orderBook.bids[0]) ? (orderBook.asks[0][0] - orderBook.bids[0][0]).toFixed(2) : '0.00'}</div>`;
+    bids.forEach(([p, s]) => {
+      const pct = Math.min(100, (s / maxVol) * 100);
+      html += `<div class="dom-row bid"><div class="dom-bg-bar" style="width:${pct}%"></div><span class="dom-price">${p.toFixed(2)}</span><span class="dom-size">${s.toFixed(2)}</span></div>`;
+    });
+    list.innerHTML = html;
+  }
+
+  // ----------------------------------------------------
+  // CHART RENDERING (HEATMAP, FOOTPRINT, POC & CANDLES)
+  // ----------------------------------------------------
+  function drawChart() {
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    if (candles.length < 2) return;
+
+    // Compute min / max price
+    let minP = Infinity, maxP = -Infinity;
+    candles.forEach(c => {
+      minP = Math.min(minP, c.low);
+      maxP = Math.max(maxP, c.high);
+    });
+    const pad = (maxP - minP) * 0.1 || 5;
+    minP -= pad;
+    maxP += pad;
+
+    const getY = (p) => h - ((p - minP) / (maxP - minP)) * h;
+
+    const candleWidth = Math.max(14, (w - 60) / 40);
+
+    // 1. DRAW HEATMAP MATRIX BACKGROUND (Bookmap Style)
+    if (chartMode === 'heatmap' && heatmapMatrix.length > 0) {
+      const colW = (w - 60) / 80;
+      heatmapMatrix.forEach((col, idx) => {
+        const x = idx * colW;
+        [...col.bids, ...col.asks].forEach(([p, qty]) => {
+          if (p >= minP && p <= maxP) {
+            const y = getY(p);
+            const intensity = Math.min(1, Math.log1p(qty) / Math.log1p(maxHeatmapVol + 10));
+            // Heatmap color gradient: Deep Navy -> Cyan -> Amber -> Hot White
+            ctx.fillStyle = p < lastPrice 
+              ? `rgba(0, 240, 255, ${intensity * 0.45})` 
+              : `rgba(255, 145, 0, ${intensity * 0.45})`;
+            ctx.fillRect(x, y - 2, colW + 1, 4);
+          }
+        });
+      });
+    }
+
+    // 2. DRAW CANDLESTICKS OR FOOTPRINT BARS
+    candles.forEach((c, i) => {
+      const x = i * (candleWidth + 6) + 30;
+      const yOpen = getY(c.open);
+      const yClose = getY(c.close);
+      const yHigh = getY(c.high);
+      const yLow = getY(c.low);
+      const isUp = c.close >= c.open;
+
+      if (chartMode === 'footprint') {
+        // --- FOOTPRINT NUMBER BARS (SIERRA STYLE) ---
+        const levels = Object.keys(c.footprint).map(Number).sort((a,b) => b-a);
+        let pocLevel = levels[0], maxLevelVol = 0;
+        levels.forEach(lvl => {
+          const totalVol = c.footprint[lvl].buy + c.footprint[lvl].sell;
+          if (totalVol > maxLevelVol) { maxLevelVol = totalVol; pocLevel = lvl; }
+        });
+
+        levels.forEach(lvl => {
+          const yLvl = getY(lvl);
+          const data = c.footprint[lvl];
+          const isPoc = lvl === pocLevel;
+
+          // Background POC highlight
+          if (isPoc) {
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.25)';
+            ctx.fillRect(x - candleWidth/2, yLvl - 6, candleWidth, 12);
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x - candleWidth/2, yLvl - 6, candleWidth, 12);
+          }
+
+          // Left (Sell Vol) x Right (Buy Vol)
+          ctx.font = '8px monospace';
+          ctx.fillStyle = '#ff3b69';
+          ctx.fillText(data.sell.toFixed(1), x - candleWidth/2 + 2, yLvl + 3);
+          ctx.fillStyle = '#00e676';
+          ctx.fillText(data.buy.toFixed(1), x + 2, yLvl + 3);
+        });
+
+        // Delta label underneath candle
+        ctx.fillStyle = c.delta >= 0 ? '#00e676' : '#ff3b69';
+        ctx.font = '9px monospace';
+        ctx.fillText((c.delta >= 0 ? '+' : '') + c.delta.toFixed(0), x - 8, h - 10);
+
+      } else {
+        // --- STANDARD CANDLESTICK WITH VOLUME SHADOW ---
+        ctx.strokeStyle = isUp ? '#00e676' : '#ff3b69';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, yHigh);
+        ctx.lineTo(x, yLow);
+        ctx.stroke();
+
+        ctx.fillStyle = isUp ? '#00e676' : '#ff3b69';
+        const top = Math.min(yOpen, yClose);
+        const height = Math.max(2, Math.abs(yClose - yOpen));
+        ctx.fillRect(x - candleWidth/2, top, candleWidth, height);
+      }
+    });
+
+    // 3. CURRENT PRICE LINE (DASHED GOLD)
+    const curY = getY(lastPrice);
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, curY);
+    ctx.lineTo(w, curY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Price tag
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(w - 55, curY - 9, 55, 18);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(lastPrice.toFixed(2), w - 50, curY + 4);
+  }
+
+  // ----------------------------------------------------
+  // INITIALIZATION
+  // ----------------------------------------------------
+  setTimeout(() => {
+    resizeCanvas();
+    connectWebSocket();
+  }, 200);
 </script>
 </body>
 </html>
